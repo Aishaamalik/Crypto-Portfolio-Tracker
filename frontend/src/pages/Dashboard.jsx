@@ -25,6 +25,24 @@ ChartJS.register(
   Legend
 )
 
+// Color constants
+const COLORS = {
+  primary: '#6366f1', // Indigo
+  success: '#22c55e', // Green
+  danger: '#ef4444',  // Red
+  warning: '#f59e0b', // Amber
+  background: '#f8fafc',
+  card: '#ffffff',
+  text: '#1e293b',
+  border: '#e2e8f0',
+  chart: {
+    main: '#6366f1',
+    upper: 'rgba(99, 102, 241, 0.3)',
+    lower: 'rgba(99, 102, 241, 0.3)',
+    grid: 'rgba(226, 232, 240, 0.5)',
+  }
+}
+
 export default function Dashboard() {
   const [portfolioValue, setPortfolioValue] = useState(0)
   const [portfolioChange, setPortfolioChange] = useState(0)
@@ -38,7 +56,6 @@ export default function Dashboard() {
       setPrices(data.prices)
       // Update portfolio value based on holdings
       const totalValue = Object.entries(data.prices).reduce((acc, [symbol, price]) => {
-        // Here you would multiply by actual holdings
         return acc + (price * 1) // Placeholder: assuming 1 unit of each coin
       }, 0)
       setPortfolioValue(totalValue)
@@ -47,36 +64,73 @@ export default function Dashboard() {
     // Fetch initial data
     const fetchInitialData = async () => {
       try {
-        // Get BTC price and change for portfolio overview
         const btcData = await binanceService.getCoinPrice('BTC')
         setPortfolioChange(parseFloat(btcData.change_24h))
 
-        // Get BTC forecast for chart
         const forecast = await binanceService.getCoinForecast('BTC')
         setChartData({
           labels: forecast.forecast.map(f => f.date),
           datasets: [
             {
-              label: 'Portfolio Value Forecast',
+              label: 'Price Forecast',
               data: forecast.forecast.map(f => f.price),
-              borderColor: 'rgb(99, 102, 241)',
+              borderColor: COLORS.chart.main,
               backgroundColor: 'rgba(99, 102, 241, 0.1)',
               tension: 0.4,
               fill: true,
+              borderWidth: 2,
             },
+            {
+              label: 'Upper Bound',
+              data: forecast.forecast.map(f => f.upper_bound),
+              borderColor: COLORS.chart.upper,
+              borderDash: [5, 5],
+              fill: false,
+              borderWidth: 1,
+            },
+            {
+              label: 'Lower Bound',
+              data: forecast.forecast.map(f => f.lower_bound),
+              borderColor: COLORS.chart.lower,
+              borderDash: [5, 5],
+              fill: false,
+              borderWidth: 1,
+            }
           ],
         })
+
+        const analysisMetrics = forecast.analysis
+        toast.success(
+          `Market Analysis:
+          Volatility: ${analysisMetrics.volatility}%
+          Trend Strength: ${analysisMetrics.trend_strength}%
+          RSI: ${analysisMetrics.rsi}
+          Confidence: ${analysisMetrics.confidence_level}`,
+          {
+            style: {
+              background: COLORS.card,
+              color: COLORS.text,
+              border: `1px solid ${COLORS.border}`,
+            },
+          }
+        )
+        
         setLoading(false)
       } catch (error) {
         console.error('Error fetching initial data:', error)
-        toast.error('Failed to fetch market data')
+        toast.error('Failed to fetch market data', {
+          style: {
+            background: COLORS.card,
+            color: COLORS.danger,
+            border: `1px solid ${COLORS.border}`,
+          },
+        })
         setLoading(false)
       }
     }
 
     fetchInitialData()
 
-    // Cleanup WebSocket connection
     return () => {
       ws.close()
     }
@@ -85,26 +139,59 @@ export default function Dashboard() {
   const chartOptions = {
     responsive: true,
     plugins: {
-      legend: { position: 'top' },
-      title: {
-        display: true,
-        text: 'Portfolio Value Forecast',
-        font: {
-          size: 16,
-          weight: 'bold'
+      legend: { 
+        position: 'top',
+        labels: {
+          color: COLORS.text,
+          font: {
+            size: 12,
+          },
+          usePointStyle: true,
         }
       },
+      title: {
+        display: true,
+        text: '7-Day Price Forecast with Confidence Intervals',
+        font: {
+          size: 16,
+          weight: 'bold',
+          color: COLORS.text,
+        }
+      },
+      tooltip: {
+        backgroundColor: COLORS.card,
+        titleColor: COLORS.text,
+        bodyColor: COLORS.text,
+        borderColor: COLORS.border,
+        borderWidth: 1,
+        callbacks: {
+          label: function(context) {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            return `${label}: $${value.toLocaleString()}`;
+          }
+        }
+      }
     },
     scales: {
       y: { 
         beginAtZero: false,
         grid: {
-          color: 'rgba(156, 163, 175, 0.1)'
+          color: COLORS.chart.grid,
+        },
+        ticks: {
+          color: COLORS.text,
+          callback: function(value) {
+            return '$' + value.toLocaleString();
+          }
         }
       },
       x: {
         grid: {
           display: false
+        },
+        ticks: {
+          color: COLORS.text,
         }
       }
     },
@@ -112,113 +199,72 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+      <div className="flex items-center justify-center min-h-screen" style={{ background: COLORS.background }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: COLORS.primary }}></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
-            Dashboard
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track your portfolio performance and market trends
-          </p>
-        </div>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700">
+    <div className="min-h-screen p-6" style={{ background: COLORS.background }}>
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Portfolio Value Card */}
+          <div className="p-6 rounded-lg shadow-sm" style={{ background: COLORS.card, border: `1px solid ${COLORS.border}` }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Value</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                <p className="text-sm font-medium" style={{ color: COLORS.text }}>Portfolio Value</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: COLORS.text }}>
                   ${portfolioValue.toLocaleString()}
                 </p>
               </div>
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <DollarSign className="h-8 w-8 text-indigo-500" />
+              <div className="p-3 rounded-full" style={{ background: `${COLORS.primary}20` }}>
+                <Wallet className="w-6 h-6" style={{ color: COLORS.primary }} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700">
+          {/* 24h Change Card */}
+          <div className="p-6 rounded-lg shadow-sm" style={{ background: COLORS.card, border: `1px solid ${COLORS.border}` }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">24h Change</p>
-                <div className="flex items-center">
-                  <p className={`text-2xl font-semibold ${
-                    portfolioChange >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}>
-                    {portfolioChange}%
-                  </p>
+                <p className="text-sm font-medium" style={{ color: COLORS.text }}>24h Change</p>
+                <div className="flex items-center mt-1">
                   {portfolioChange >= 0 ? (
-                    <ArrowUp className="h-5 w-5 text-green-500 ml-1" />
+                    <ArrowUp className="w-4 h-4 mr-1" style={{ color: COLORS.success }} />
                   ) : (
-                    <ArrowDown className="h-5 w-5 text-red-500 ml-1" />
+                    <ArrowDown className="w-4 h-4 mr-1" style={{ color: COLORS.danger }} />
                   )}
+                  <p className="text-2xl font-bold" style={{ color: portfolioChange >= 0 ? COLORS.success : COLORS.danger }}>
+                    {Math.abs(portfolioChange).toFixed(2)}%
+                  </p>
                 </div>
               </div>
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <TrendingUp className="h-8 w-8 text-indigo-500" />
+              <div className="p-3 rounded-full" style={{ background: `${portfolioChange >= 0 ? COLORS.success : COLORS.danger}20` }}>
+                <TrendingUp className="w-6 h-6" style={{ color: portfolioChange >= 0 ? COLORS.success : COLORS.danger }} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700">
+          {/* Market Activity Card */}
+          <div className="p-6 rounded-lg shadow-sm" style={{ background: COLORS.card, border: `1px solid ${COLORS.border}` }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Assets</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {Object.keys(prices).length}
-                </p>
-              </div>
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <Wallet className="h-8 w-8 text-indigo-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Market Activity</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                <p className="text-sm font-medium" style={{ color: COLORS.text }}>Market Activity</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: COLORS.text }}>
                   Active
                 </p>
               </div>
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <Activity className="h-8 w-8 text-indigo-500" />
+              <div className="p-3 rounded-full" style={{ background: `${COLORS.warning}20` }}>
+                <Activity className="w-6 h-6" style={{ color: COLORS.warning }} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-          <Line options={chartOptions} data={chartData} />
-        </div>
-
-        {/* Activity */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
-            <button className="text-sm text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">
-              View All
-            </button>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No recent activity</p>
-              </div>
-            </div>
-          </div>
+        {/* Chart Section */}
+        <div className="p-6 rounded-lg shadow-sm" style={{ background: COLORS.card, border: `1px solid ${COLORS.border}` }}>
+          <Line data={chartData} options={chartOptions} />
         </div>
       </div>
     </div>

@@ -16,7 +16,6 @@ export default function Sidebar() {
         <span role="img" aria-label="logo" className="mr-3 text-5xl">🚀</span>
         <span className="text-center">Crypto Tracker</span>
       </div>
-      {/* Navigation */}
       <nav className="flex-1 py-6 px-2 space-y-2">
         {navLinks.map(link => (
           <NavLink
