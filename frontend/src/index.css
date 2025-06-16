@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 dark:border-gray-700;
+  }
+
+  .stat-title {
+    @apply text-sm font-medium text-gray-600 dark:text-gray-400 mb-1;
+  }
+
+  .stat-value {
+    @apply text-2xl font-semibold text-gray-900 dark:text-white;
+  }
+
+  .icon-container {
+    @apply bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg;
+  }
+}

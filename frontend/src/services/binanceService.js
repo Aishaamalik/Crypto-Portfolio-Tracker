@@ -1,0 +1,73 @@
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000';
+
+export const binanceService = {
+    // Get current price and 24h change for a coin
+    async getCoinPrice(coinId) {
+        try {
+            const response = await axios.get(`${API_URL}/price/${coinId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching coin price:', error);
+            throw error;
+        }
+    },
+
+    // Get 7-day price forecast for a coin
+    async getCoinForecast(coinId) {
+        try {
+            const response = await axios.get(`${API_URL}/forecast/${coinId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching coin forecast:', error);
+            throw error;
+        }
+    },
+
+    // Add a coin manually to portfolio
+    async addCoinManually(coinData) {
+        try {
+            const response = await axios.post(`${API_URL}/portfolio/manual`, coinData);
+            return response.data;
+        } catch (error) {
+            console.error('Error adding coin:', error);
+            throw error;
+        }
+    },
+
+    // Compare portfolio with market
+    async comparePortfolio(userId) {
+        try {
+            const response = await axios.get(`${API_URL}/compare/${userId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error comparing portfolio:', error);
+            throw error;
+        }
+    },
+
+    // Initialize WebSocket connection for real-time prices
+    initWebSocket(onMessage) {
+        const ws = new WebSocket('ws://localhost:8000/ws/prices');
+        
+        ws.onopen = () => {
+            console.log('WebSocket Connected');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            onMessage(data);
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket Disconnected');
+        };
+
+        return ws;
+    }
+}; 
