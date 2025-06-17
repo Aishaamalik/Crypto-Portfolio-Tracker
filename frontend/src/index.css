@@ -4,18 +4,53 @@
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 dark:border-gray-700;
+    @apply p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border;
+    background: #ffffff;
+    border-color: #e2e8f0;
   }
 
   .stat-title {
-    @apply text-sm font-medium text-gray-600 dark:text-gray-400 mb-1;
+    @apply text-sm font-medium mb-1;
+    color: #155263;
   }
 
   .stat-value {
-    @apply text-2xl font-semibold text-gray-900 dark:text-white;
+    @apply text-2xl font-semibold;
+    color: #155263;
   }
 
   .icon-container {
-    @apply bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg;
+    @apply p-3 rounded-lg;
+    background: rgba(21, 82, 99, 0.1);
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    background: #155263;
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    background: #1a6b7e;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    background: #ff6f3c;
+    color: #ffffff;
+  }
+
+  .btn-secondary:hover {
+    background: #ff8a5c;
+  }
+
+  .btn-accent {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    background: #ff9a3c;
+    color: #ffffff;
+  }
+
+  .btn-accent:hover {
+    background: #ffb05c;
   }
 }

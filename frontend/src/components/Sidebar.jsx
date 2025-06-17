@@ -1,39 +1,49 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, PieChart, PlusCircle, Wallet } from 'lucide-react'
+import { COLORS } from '../theme/colors'
 
 const navLinks = [
-  { name: 'Dashboard', to: '/', icon: <LayoutDashboard className="h-5 w-5 mr-3" /> },
-  { name: 'Portfolio', to: '/portfolio', icon: <PieChart className="h-5 w-5 mr-3" /> },
-  { name: 'Add Coin', to: '/add-coin', icon: <PlusCircle className="h-5 w-5 mr-3" /> },
-  { name: 'Wallet Sync', to: '/wallet-sync', icon: <Wallet className="h-5 w-5 mr-3" /> },
+  { name: 'Dashboard', to: '/', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { name: 'Portfolio', to: '/portfolio', icon: <PieChart className="h-5 w-5" /> },
+  { name: 'Add Coin', to: '/add-coin', icon: <PlusCircle className="h-5 w-5" /> },
+  { name: 'Wallet Sync', to: '/wallet-sync', icon: <Wallet className="h-5 w-5" /> },
 ]
 
 export default function Sidebar() {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 w-64 bg-blue-600 text-white flex flex-col shadow-lg transition-transform duration-300 min-h-screen">
-      {/* Branding */}
-      <div className="flex items-center justify-center h-55 px-6 font-extrabold text-4xl tracking-wide border-b border-blue-700 select-none">
-        <span role="img" aria-label="logo" className="mr-3 text-5xl">🚀</span>
-        <span className="text-center">Crypto Tracker</span>
+    <aside className="w-full bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg">
+      <div className="max-w-7xl mx-auto">
+        {/* Branding */}
+        <div className="flex items-center justify-between h-20 px-6">
+          <div className="flex items-center space-x-3">
+            <span role="img" aria-label="logo" className="text-3xl">🚀</span>
+            <span className="text-2xl font-bold text-white tracking-tight">Crypto Tracker</span>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="px-6 pb-4">
+          <nav className="flex items-center space-x-1">
+            {navLinks.map(link => (
+              <NavLink
+                key={link.name}
+                to={link.to}
+                end={link.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-white text-blue-700 shadow-md' 
+                      : 'text-white hover:bg-white/10'
+                  }`
+                }
+              >
+                <span className="mr-2">{link.icon}</span>
+                {link.name}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
       </div>
-      <nav className="flex-1 py-6 px-2 space-y-2">
-        {navLinks.map(link => (
-          <NavLink
-            key={link.name}
-            to={link.to}
-            end={link.to === '/'}
-            className={({ isActive }) =>
-              `flex items-center px-4 py-3 rounded-lg font-medium transition-colors duration-200 hover:bg-blue-700/80 hover:text-yellow-300 ${
-                isActive ? 'bg-white text-blue-700 shadow font-bold' : 'text-white'
-              }`
-            }
-          >
-            {link.icon}
-            {link.name}
-          </NavLink>
-        ))}
-      </nav>
-      {/* Footer or collapse button for mobile can go here */}
     </aside>
   )
 } 

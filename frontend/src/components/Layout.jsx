@@ -3,15 +3,15 @@ import Sidebar from './Sidebar'
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar takes 1/3 of the screen */}
-      <div className="w-1/3">
-        <Sidebar />
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <Sidebar />
       
-      {/* Main content area takes 2/3 of the screen */}
-      <main className="flex-1 p-8">
-        <Outlet />
+      {/* Main content area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

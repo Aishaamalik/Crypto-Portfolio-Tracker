@@ -23,7 +23,7 @@ export default function Navbar() {
             to="/"
             className="text-white dark:text-primary-300 text-2xl font-extrabold tracking-wide hover:scale-105 transition-transform duration-300"
           >
-            🚀 Crypto Tracker
+             Crypto Tracker
           </Link>
 
           {/* Desktop Navigation */}
