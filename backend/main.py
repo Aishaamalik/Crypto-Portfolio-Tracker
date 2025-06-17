@@ -50,11 +50,32 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Get real-time prices from Binance
+            # Get real-time prices and 24h changes from Binance
             prices = await BinanceService.get_all_prices()
+            price_data = {}
+            
+            # List of valid trading pairs we want to track
+            valid_pairs = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK', 'UNI']
+            
+            for symbol in valid_pairs:
+                try:
+                    price = await BinanceService.get_current_price(symbol)
+                    change_24h = await BinanceService.get_24h_change(symbol)
+                    
+                    if price and change_24h:
+                        price_data[symbol] = {
+                            "price": price["price"],
+                            "change_24h": change_24h["priceChangePercent"],
+                            "price_change": change_24h["priceChange"],
+                            "last_price": change_24h["lastPrice"]
+                        }
+                except Exception as e:
+                    print(f"Error getting data for {symbol}: {str(e)}")
+                    continue
+            
             data = {
                 "timestamp": datetime.now().isoformat(),
-                "prices": {item["symbol"].replace("USDT", ""): float(item["price"]) for item in prices}
+                "prices": price_data
             }
             await websocket.send_text(json.dumps(data))
             await asyncio.sleep(1)  # Update every second
@@ -103,7 +124,9 @@ async def get_coin_price(coin_id: str):
         return {
             "symbol": coin_id,
             "price": price_data["price"],
-            "change_24h": change_24h["priceChangePercent"]
+            "change_24h": change_24h["priceChangePercent"],
+            "price_change": change_24h["priceChange"],
+            "last_price": change_24h["lastPrice"]
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

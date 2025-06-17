@@ -36,15 +36,26 @@ export function PortfolioProvider({ children }) {
   useEffect(() => {
     // Initialize WebSocket connection for real-time prices
     const ws = binanceService.initWebSocket((data) => {
-      setPrices(data.prices)
-      // Update holdings with current prices
+      console.log('WebSocket data received:', data); // Debug log
+      setPrices(data.prices);
+      
+      // Update holdings with current prices and 24h changes
       setHoldings(prevHoldings => 
-        prevHoldings.map(holding => ({
-          ...holding,
-          value: holding.amount * (data.prices[holding.symbol] || 0)
-        }))
-      )
-    })
+        prevHoldings.map(holding => {
+          const priceData = data.prices[holding.symbol];
+          if (!priceData) {
+            console.log(`No price data for ${holding.symbol}`); // Debug log
+            return holding;
+          }
+          
+          return {
+            ...holding,
+            value: holding.amount * priceData.price,
+            change24h: priceData.change_24h
+          };
+        })
+      );
+    });
 
     // Load initial holdings
     const loadHoldings = async () => {
@@ -54,26 +65,59 @@ export function PortfolioProvider({ children }) {
           id: index + 1,
           symbol,
           amount,
-          value: 0, // Will be updated by WebSocket
-          change24h: 0, // Will be updated by WebSocket
-          allocation: 0 // Will be calculated based on total value
-        }))
+          value: 0,
+          change24h: 0,
+          allocation: 0
+        }));
         
-        setHoldings(initialHoldings)
-        setLoading(false)
-      } catch (error) {
-        console.error('Error loading holdings:', error)
-        toast.error('Failed to load portfolio')
-        setLoading(false)
-      }
-    }
+        setHoldings(initialHoldings);
+        
+        // Fetch initial prices for all holdings
+        const pricePromises = initialHoldings.map(async (holding) => {
+          try {
+            const priceData = await binanceService.getCoinPrice(holding.symbol);
+            return {
+              symbol: holding.symbol,
+              price: priceData.price,
+              change24h: priceData.change_24h
+            };
+          } catch (error) {
+            console.error(`Error fetching initial price for ${holding.symbol}:`, error);
+            return null;
+          }
+        });
 
-    loadHoldings()
+        const priceResults = await Promise.all(pricePromises);
+        const validPrices = priceResults.filter(result => result !== null);
+
+        // Update holdings with initial prices
+        setHoldings(prevHoldings =>
+          prevHoldings.map(holding => {
+            const priceData = validPrices.find(p => p.symbol === holding.symbol);
+            if (!priceData) return holding;
+
+            return {
+              ...holding,
+              value: holding.amount * priceData.price,
+              change24h: priceData.change24h
+            };
+          })
+        );
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading holdings:', error);
+        toast.error('Failed to load portfolio');
+        setLoading(false);
+      }
+    };
+
+    loadHoldings();
 
     return () => {
-      ws.close()
-    }
-  }, [])
+      ws.close();
+    };
+  }, []);
 
   // Calculate allocation percentages whenever holdings or prices change
   useEffect(() => {

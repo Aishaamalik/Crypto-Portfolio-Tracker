@@ -9,16 +9,66 @@ class BinanceService:
     @staticmethod
     async def get_current_price(symbol: str) -> Dict:
         """Get current price for a symbol"""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{BinanceService.BASE_URL}/ticker/price", params={"symbol": f"{symbol}USDT"}) as response:
-                return await response.json()
+        try:
+            # Ensure symbol is in correct format for Binance (e.g., BTCUSDT)
+            formatted_symbol = f"{symbol}USDT"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{BinanceService.BASE_URL}/ticker/price", params={"symbol": formatted_symbol}) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        print(f"Error response from Binance for {formatted_symbol}: {error_text}")
+                        return {
+                            "symbol": symbol,
+                            "price": 0
+                        }
+                    
+                    data = await response.json()
+                    return {
+                        "symbol": symbol,
+                        "price": float(data.get("price", 0))
+                    }
+        except Exception as e:
+            print(f"Error getting price for {symbol}: {str(e)}")
+            return {
+                "symbol": symbol,
+                "price": 0
+            }
 
     @staticmethod
     async def get_24h_change(symbol: str) -> Dict:
         """Get 24-hour price change statistics"""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{BinanceService.BASE_URL}/ticker/24hr", params={"symbol": f"{symbol}USDT"}) as response:
-                return await response.json()
+        try:
+            # Ensure symbol is in correct format for Binance (e.g., BTCUSDT)
+            formatted_symbol = f"{symbol}USDT"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{BinanceService.BASE_URL}/ticker/24hr", params={"symbol": formatted_symbol}) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        print(f"Error response from Binance for {formatted_symbol}: {error_text}")
+                        return {
+                            "symbol": symbol,
+                            "priceChangePercent": 0,
+                            "priceChange": 0,
+                            "lastPrice": 0
+                        }
+                    
+                    data = await response.json()
+                    return {
+                        "symbol": symbol,
+                        "priceChangePercent": float(data.get("priceChangePercent", 0)),
+                        "priceChange": float(data.get("priceChange", 0)),
+                        "lastPrice": float(data.get("lastPrice", 0))
+                    }
+        except Exception as e:
+            print(f"Error getting 24h change for {symbol}: {str(e)}")
+            return {
+                "symbol": symbol,
+                "priceChangePercent": 0,
+                "priceChange": 0,
+                "lastPrice": 0
+            }
 
     @staticmethod
     async def get_historical_prices(symbol: str, interval: str = "1d", limit: int = 30) -> List:

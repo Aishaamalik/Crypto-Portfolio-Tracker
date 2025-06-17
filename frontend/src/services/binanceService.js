@@ -7,9 +7,10 @@ export const binanceService = {
     async getCoinPrice(coinId) {
         try {
             const response = await axios.get(`${API_URL}/price/${coinId}`);
+            console.log(`Price data for ${coinId}:`, response.data); // Debug log
             return response.data;
         } catch (error) {
-            console.error('Error fetching coin price:', error);
+            console.error(`Error fetching coin price for ${coinId}:`, error);
             throw error;
         }
     },
@@ -20,7 +21,7 @@ export const binanceService = {
             const response = await axios.get(`${API_URL}/forecast/${coinId}`);
             return response.data;
         } catch (error) {
-            console.error('Error fetching coin forecast:', error);
+            console.error(`Error fetching forecast for ${coinId}:`, error);
             throw error;
         }
     },
@@ -56,8 +57,13 @@ export const binanceService = {
         };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            onMessage(data);
+            try {
+                const data = JSON.parse(event.data);
+                console.log('WebSocket message received:', data); // Debug log
+                onMessage(data);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
         };
 
         ws.onerror = (error) => {
