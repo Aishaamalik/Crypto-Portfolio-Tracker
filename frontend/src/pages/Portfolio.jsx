@@ -1,76 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowUp, ArrowDown, Trash2, Edit2, Plus, Search, Filter } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { binanceService } from '../services/binanceService'
 import AddCoinModal from '../components/AddCoinModal'
+import { usePortfolio } from '../context/PortfolioContext'
+
+// Add portfolio holdings data - same as dashboard
+const PORTFOLIO_HOLDINGS = {
+  'BTC': 0.5,    // 0.5 BTC
+  'ETH': 3.2,    // 3.2 ETH
+  'BNB': 15,     // 15 BNB
+  'SOL': 25,     // 25 SOL
+  'ADA': 1000,   // 1000 ADA
+  'DOT': 50,     // 50 DOT
+  'AVAX': 20,    // 20 AVAX
+  'MATIC': 500,  // 500 MATIC
+  'LINK': 100,   // 100 LINK
+  'UNI': 75      // 75 UNI
+}
 
 export default function Portfolio() {
-  const [holdings, setHoldings] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { holdings, loading, deleteHolding, addHolding } = usePortfolio()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [prices, setPrices] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
 
-  useEffect(() => {
-    // Initialize WebSocket connection for real-time prices
-    const ws = binanceService.initWebSocket((data) => {
-      setPrices(data.prices)
-      // Update holdings with current prices
-      setHoldings(prevHoldings => 
-        prevHoldings.map(holding => ({
-          ...holding,
-          value: holding.amount * (data.prices[holding.symbol] || 0)
-        }))
-      )
-    })
-
-    // Load initial holdings
-    const loadHoldings = async () => {
-      try {
-        // Here you would typically fetch holdings from your backend
-        // For now, we'll use mock data
-        const mockHoldings = [
-          {
-            id: 1,
-            symbol: 'BTC',
-            amount: 0.5,
-            value: 0,
-            change24h: 0,
-            allocation: 0
-          },
-          {
-            id: 2,
-            symbol: 'ETH',
-            amount: 5,
-            value: 0,
-            change24h: 0,
-            allocation: 0
-          }
-        ]
-        setHoldings(mockHoldings)
-        setLoading(false)
-      } catch (error) {
-        console.error('Error loading holdings:', error)
-        toast.error('Failed to load portfolio')
-        setLoading(false)
-      }
-    }
-
-    loadHoldings()
-
-    return () => {
-      ws.close()
-    }
-  }, [])
-
   const handleDelete = async (id) => {
-    try {
-      // Here you would typically call your backend to delete the holding
-      setHoldings(holdings.filter((holding) => holding.id !== id))
-      toast.success('Holding deleted successfully')
-    } catch (error) {
-      toast.error('Failed to delete holding')
-    }
+    await deleteHolding(id)
   }
 
   const handleEdit = (id) => {
@@ -79,21 +33,8 @@ export default function Portfolio() {
   }
 
   const handleAddCoin = async (coinData) => {
-    try {
-      // Here you would typically call your backend to add the coin
-      const newHolding = {
-        id: Date.now(), // Temporary ID
-        symbol: coinData.symbol,
-        amount: coinData.amount,
-        value: coinData.amount * (prices[coinData.symbol] || 0),
-        change24h: 0,
-        allocation: 0
-      }
-      setHoldings([...holdings, newHolding])
-    } catch (error) {
-      console.error('Error adding coin:', error)
-      toast.error('Failed to add coin')
-    }
+    await addHolding(coinData)
+    setIsAddModalOpen(false)
   }
 
   const filteredHoldings = holdings.filter(holding =>
@@ -216,7 +157,7 @@ export default function Portfolio() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {holding.allocation}%
+                        {holding.allocation.toFixed(2)}%
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

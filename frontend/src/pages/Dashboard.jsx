@@ -15,6 +15,7 @@ import {
 import { ArrowUp, ArrowDown, DollarSign, TrendingUp, Wallet, Activity, PieChart, BarChart2 } from 'lucide-react'
 import { binanceService } from '../services/binanceService'
 import toast from 'react-hot-toast'
+import { usePortfolio } from '../context/PortfolioContext'
 
 // Register ChartJS components
 ChartJS.register(
@@ -61,26 +62,11 @@ const COIN_COLORS = {
   'UNI': '#06b6d4'   // Cyan
 }
 
-// Add portfolio holdings data
-const PORTFOLIO_HOLDINGS = {
-  'BTC': 0.5,    // 0.5 BTC
-  'ETH': 3.2,    // 3.2 ETH
-  'BNB': 15,     // 15 BNB
-  'SOL': 25,     // 25 SOL
-  'ADA': 1000,   // 1000 ADA
-  'DOT': 50,     // 50 DOT
-  'AVAX': 20,    // 20 AVAX
-  'MATIC': 500,  // 500 MATIC
-  'LINK': 100,   // 100 LINK
-  'UNI': 75      // 75 UNI
-}
-
 export default function Dashboard() {
+  const { holdings, prices, loading } = usePortfolio()
   const [portfolioValue, setPortfolioValue] = useState(0)
   const [portfolioChange, setPortfolioChange] = useState(0)
   const [chartData, setChartData] = useState({ labels: [], datasets: [] })
-  const [prices, setPrices] = useState({})
-  const [loading, setLoading] = useState(true)
   const [portfolioDistribution, setPortfolioDistribution] = useState({ labels: [], datasets: [] })
   const [comparisonData, setComparisonData] = useState({ labels: [], datasets: [] })
   const [performanceMetrics, setPerformanceMetrics] = useState({
@@ -89,72 +75,50 @@ export default function Dashboard() {
     totalGain: 0,
     totalLoss: 0
   })
-  const [portfolioCoins, setPortfolioCoins] = useState([])
 
   useEffect(() => {
-    // Initialize WebSocket connection
-    const ws = binanceService.initWebSocket((data) => {
-      // Filter prices to only include coins in our portfolio
-      const portfolioPrices = Object.entries(data.prices)
-        .filter(([symbol]) => PORTFOLIO_HOLDINGS[symbol])
-        .reduce((acc, [symbol, price]) => ({ ...acc, [symbol]: price }), {})
-      
-      setPrices(portfolioPrices)
-      
-      // Calculate total portfolio value based on actual holdings
-      const totalValue = Object.entries(portfolioPrices).reduce((acc, [symbol, price]) => {
-        const holdings = PORTFOLIO_HOLDINGS[symbol]
-        return acc + (price * holdings)
-      }, 0)
+    if (holdings.length > 0) {
+      // Calculate total portfolio value
+      const totalValue = holdings.reduce((sum, holding) => sum + holding.value, 0)
       setPortfolioValue(totalValue)
 
-      // Update portfolio distribution with actual holdings
+      // Update portfolio distribution
       const distribution = {
-        labels: Object.keys(PORTFOLIO_HOLDINGS),
+        labels: holdings.map(h => h.symbol),
         datasets: [{
-          data: Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, holdings]) => {
-            const price = portfolioPrices[symbol] || 0
-            return price * holdings
-          }),
-          backgroundColor: Object.keys(PORTFOLIO_HOLDINGS).map(symbol => COIN_COLORS[symbol]),
+          data: holdings.map(h => h.value),
+          backgroundColor: holdings.map(h => COIN_COLORS[h.symbol] || COLORS.primary),
         }]
       }
       setPortfolioDistribution(distribution)
 
-      // Update comparison data with actual holdings vs market average
+      // Update comparison data
       const comparison = {
-        labels: Object.keys(PORTFOLIO_HOLDINGS),
+        labels: holdings.map(h => h.symbol),
         datasets: [
           {
             label: 'Your Holdings',
-            data: Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, holdings]) => {
-              const price = portfolioPrices[symbol] || 0
-              return price * holdings
-            }),
-            backgroundColor: Object.keys(PORTFOLIO_HOLDINGS).map(symbol => COIN_COLORS[symbol]),
+            data: holdings.map(h => h.value),
+            backgroundColor: holdings.map(h => COIN_COLORS[h.symbol] || COLORS.primary),
           },
           {
             label: 'Market Average',
-            data: Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, holdings]) => {
-              const price = portfolioPrices[symbol] || 0
-              return price * (holdings * 1.2)
-            }),
-            backgroundColor: Object.keys(PORTFOLIO_HOLDINGS).map(symbol => 
-              `${COIN_COLORS[symbol]}80`
+            data: holdings.map(h => h.value * 1.2), // Example market average calculation
+            backgroundColor: holdings.map(h => 
+              `${COIN_COLORS[h.symbol] || COLORS.primary}80`
             ),
           }
         ]
       }
       setComparisonData(comparison)
 
-      // Calculate performance metrics with actual holdings
-      const changes = Object.entries(portfolioPrices).map(([symbol, price]) => {
-        const holdings = PORTFOLIO_HOLDINGS[symbol]
-        const previousPrice = price * 0.9
-        const currentValue = price * holdings
-        const previousValue = previousPrice * holdings
+      // Calculate performance metrics
+      const changes = holdings.map(holding => {
+        const previousPrice = prices[holding.symbol] * 0.9 // Example previous price
+        const currentValue = holding.value
+        const previousValue = holding.amount * previousPrice
         const change = ((currentValue - previousValue) / previousValue) * 100
-        return { symbol, change, value: currentValue }
+        return { symbol: holding.symbol, change, value: currentValue }
       })
       
       const sortedChanges = changes.sort((a, b) => b.change - a.change)
@@ -164,11 +128,10 @@ export default function Dashboard() {
         totalGain: changes.filter(c => c.change > 0).reduce((acc, curr) => acc + curr.value, 0),
         totalLoss: Math.abs(changes.filter(c => c.change < 0).reduce((acc, curr) => acc + curr.value, 0))
       })
+    }
+  }, [holdings, prices])
 
-      // Update portfolio coins list
-      setPortfolioCoins(Object.keys(PORTFOLIO_HOLDINGS))
-    })
-
+  useEffect(() => {
     // Fetch initial data
     const fetchInitialData = async () => {
       try {
@@ -222,26 +185,13 @@ export default function Dashboard() {
             },
           }
         )
-        
-        setLoading(false)
       } catch (error) {
         console.error('Error fetching initial data:', error)
-        toast.error('Failed to fetch market data', {
-          style: {
-            background: COLORS.card,
-            color: COLORS.danger,
-            border: `1px solid ${COLORS.border}`,
-          },
-        })
-        setLoading(false)
+        toast.error('Failed to load market data')
       }
     }
 
     fetchInitialData()
-
-    return () => {
-      ws.close()
-    }
   }, [])
 
   const chartOptions = {
