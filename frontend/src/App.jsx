@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Portfolio from './pages/Portfolio'
 import AddCoin from './pages/AddCoin'
 import WalletSync from './pages/WalletSync'
+import Analytics from './pages/Analytics'
 import { ThemeProvider } from './context/ThemeContext'
 import { PortfolioProvider } from './context/PortfolioContext'
 
@@ -20,6 +21,7 @@ function App() {
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/add-coin" element={<AddCoin />} />
                 <Route path="/wallet-sync" element={<WalletSync />} />
+                <Route path="/analytics" element={<Analytics />} />
               </Route>
             </Routes>
             <Toaster position="top-right" />

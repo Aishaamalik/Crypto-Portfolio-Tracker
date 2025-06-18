@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, PieChart, PlusCircle, Wallet, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, PieChart, PlusCircle, Wallet, Sun, Moon, BarChart3 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
 const navLinks = [
   { name: 'Dashboard', to: '/', icon: <LayoutDashboard className="h-5 w-5" /> },
   { name: 'Portfolio', to: '/portfolio', icon: <PieChart className="h-5 w-5" /> },
+  { name: 'Analytics', to: '/analytics', icon: <BarChart3 className="h-5 w-5" /> },
   { name: 'Add Coin', to: '/add-coin', icon: <PlusCircle className="h-5 w-5" /> },
   { name: 'Wallet Sync', to: '/wallet-sync', icon: <Wallet className="h-5 w-5" /> },
 ]
