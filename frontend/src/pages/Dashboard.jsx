@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Line, Pie, Bar } from 'react-chartjs-2'
+import { Pie, Bar } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -83,7 +83,6 @@ export default function Dashboard() {
   const { holdings, prices, loading } = usePortfolio()
   const [portfolioValue, setPortfolioValue] = useState(0)
   const [portfolioChange, setPortfolioChange] = useState(0)
-  const [chartData, setChartData] = useState({ labels: [], datasets: [] })
   const [portfolioDistribution, setPortfolioDistribution] = useState({ labels: [], datasets: [] })
   const [comparisonData, setComparisonData] = useState({ labels: [], datasets: [] })
   const [showValue, setShowValue] = useState(true)
@@ -209,42 +208,6 @@ export default function Dashboard() {
       try {
         const btcData = await binanceService.getCoinPrice('BTC')
         setPortfolioChange(parseFloat(btcData.change_24h))
-
-        const forecast = await binanceService.getCoinForecast('BTC')
-        setChartData({
-          labels: forecast.forecast.map(f => f.date),
-          datasets: [
-            {
-              label: 'Price Forecast',
-              data: forecast.forecast.map(f => f.price),
-              borderColor: COLORS.chart.main,
-              backgroundColor: COLORS.chart.upper,
-              tension: 0.4,
-              fill: true,
-              borderWidth: 3,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-            },
-            {
-              label: 'Upper Bound',
-              data: forecast.forecast.map(f => f.upper_bound),
-              borderColor: COLORS.chart.upper,
-              borderDash: [5, 5],
-              fill: false,
-              borderWidth: 2,
-              pointRadius: 0,
-            },
-            {
-              label: 'Lower Bound',
-              data: forecast.forecast.map(f => f.lower_bound),
-              borderColor: COLORS.chart.lower,
-              borderDash: [5, 5],
-              fill: false,
-              borderWidth: 2,
-              pointRadius: 0,
-            }
-          ],
-        })
       } catch (error) {
         console.error('Error fetching initial data:', error)
         toast.error('Failed to load market data')
@@ -264,92 +227,6 @@ export default function Dashboard() {
     } finally {
       setIsRefreshing(false)
     }
-  }
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { 
-        position: 'top',
-        labels: {
-          color: COLORS.text,
-          font: {
-            size: 14,
-            weight: '500',
-          },
-          usePointStyle: true,
-          padding: 20,
-        }
-      },
-      title: {
-        display: true,
-        text: '7-Day Price Forecast with Confidence Intervals',
-        font: {
-          size: 18,
-          weight: 'bold',
-          color: COLORS.text,
-        },
-        padding: {
-          top: 20,
-          bottom: 20
-        }
-      },
-      tooltip: {
-        backgroundColor: COLORS.card,
-        titleColor: COLORS.text,
-        bodyColor: COLORS.text,
-        borderColor: COLORS.border,
-        borderWidth: 1,
-        padding: 12,
-        titleFont: {
-          size: 14,
-          weight: 'bold'
-        },
-        bodyFont: {
-          size: 13
-        },
-        callbacks: {
-          label: function(context) {
-            const label = context.dataset.label || '';
-            const value = context.parsed.y;
-            return `${label}: $${value.toLocaleString()}`;
-          }
-        }
-      }
-    },
-    scales: {
-      y: { 
-        beginAtZero: false,
-        grid: {
-          color: COLORS.chart.grid,
-          drawBorder: false,
-        },
-        ticks: {
-          color: COLORS.textSecondary,
-          font: {
-            size: 12
-          },
-          padding: 10,
-          callback: function(value) {
-            return '$' + value.toLocaleString();
-          }
-        }
-      },
-      x: {
-        grid: {
-          display: false,
-          drawBorder: false,
-        },
-        ticks: {
-          color: COLORS.textSecondary,
-          font: {
-            size: 12
-          },
-          padding: 10,
-        }
-      }
-    },
   }
 
   const pieOptions = {
@@ -715,15 +592,6 @@ export default function Dashboard() {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Price Forecast Chart */}
-          <div className="p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl" style={{ 
-            background: COLORS.card, 
-            border: `1px solid ${COLORS.border}`,
-            height: '500px'
-          }}>
-            <Line data={chartData} options={chartOptions} />
-          </div>
-
           {/* Portfolio Distribution Chart */}
           <div className="p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl" style={{ 
             background: COLORS.card, 
@@ -734,7 +602,7 @@ export default function Dashboard() {
           </div>
 
           {/* Holdings vs Market Comparison Chart */}
-          <div className="p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl col-span-1 lg:col-span-2" style={{ 
+          <div className="p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl" style={{ 
             background: COLORS.card, 
             border: `1px solid ${COLORS.border}`,
             height: '500px'
