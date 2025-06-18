@@ -1,16 +1,20 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { binanceService } from '../services/binanceService'
+import { usePortfolio } from '../context/PortfolioContext'
 import toast from 'react-hot-toast'
+import { Loader2 } from 'lucide-react'
 
 export default function AddCoin() {
   const navigate = useNavigate()
+  const { addHolding } = usePortfolio()
   const [formData, setFormData] = useState({
-    coin: '',
-    amount: '',
-    purchasePrice: '',
-    purchaseDate: '',
+    symbol: '',
+    amount: ''
   })
   const [loading, setLoading] = useState(false)
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [currentPrice, setCurrentPrice] = useState(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -20,18 +24,76 @@ export default function AddCoin() {
     }))
   }
 
+  const handleSymbolChange = async (symbol) => {
+    const upperSymbol = symbol.toUpperCase()
+    setFormData({ ...formData, symbol: upperSymbol })
+    
+    // Clear previous price when symbol changes
+    setCurrentPrice(null)
+    
+    // Fetch price if symbol is valid (at least 2 characters)
+    if (upperSymbol.length >= 2) {
+      setPriceLoading(true)
+      try {
+        const priceData = await binanceService.getCoinPrice(upperSymbol)
+        setCurrentPrice(priceData.price)
+      } catch (error) {
+        console.error('Error fetching price:', error)
+        setCurrentPrice(null)
+      } finally {
+        setPriceLoading(false)
+      }
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!formData.symbol || !formData.amount) {
+      toast.error('Please enter both coin symbol and amount')
+      return
+    }
+    
     setLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log('Submitting coin data:', formData)
+      
+      // Fetch current price for the coin during submission
+      let priceData
+      try {
+        console.log('Fetching price for symbol:', formData.symbol)
+        priceData = await binanceService.getCoinPrice(formData.symbol)
+        console.log('Price data received:', priceData)
+        setCurrentPrice(priceData.price)
+      } catch (priceError) {
+        console.error('Error fetching price:', priceError)
+        console.error('Price error response:', priceError.response?.data)
+        toast.error('Could not fetch current price. Please try again.')
+        setLoading(false)
+        return
+      }
 
+      // Create coin data with fetched price
+      const coinData = {
+        symbol: formData.symbol.toUpperCase(),
+        amount: parseFloat(formData.amount),
+        purchase_price: priceData.price,
+        purchase_date: new Date().toISOString().split('T')[0]
+      }
+      
+      console.log('Sending coin data to API:', coinData)
+
+      // Add to portfolio using the context
+      await addHolding(coinData)
+      
       toast.success('Coin added successfully')
       navigate('/portfolio')
     } catch (error) {
-      toast.error('Failed to add coin')
+      console.error('Error adding coin:', error)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      toast.error('Failed to add coin. Please check the symbol and try again.')
     } finally {
       setLoading(false)
     }
@@ -53,26 +115,37 @@ export default function AddCoin() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label
-                htmlFor="coin"
+                htmlFor="symbol"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
-                Coin
+                Coin Symbol
               </label>
-              <select
-                id="coin"
-                name="coin"
-                value={formData.coin}
-                onChange={handleChange}
+              <input
+                type="text"
+                id="symbol"
+                name="symbol"
+                value={formData.symbol}
+                onChange={(e) => handleSymbolChange(e.target.value)}
                 required
                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">Select a coin</option>
-                <option value="BTC">Bitcoin (BTC)</option>
-                <option value="ETH">Ethereum (ETH)</option>
-                <option value="ADA">Cardano (ADA)</option>
-                <option value="SOL">Solana (SOL)</option>
-                <option value="DOT">Polkadot (DOT)</option>
-              </select>
+                placeholder="e.g., BTC, ETH, SOL"
+              />
+              {priceLoading && (
+                <div className="flex items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Fetching current price...
+                </div>
+              )}
+              {currentPrice && !priceLoading && (
+                <div className="mt-2 text-sm text-green-600 dark:text-green-400">
+                  Current Price: ${currentPrice.toLocaleString()}
+                </div>
+              )}
+              {!currentPrice && !priceLoading && formData.symbol.length >= 2 && (
+                <div className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
+                  Price will be fetched when you submit
+                </div>
+              )}
             </div>
 
             <div>
@@ -92,47 +165,18 @@ export default function AddCoin() {
                 step="0.000001"
                 min="0"
                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-                placeholder="0.00"
+                placeholder="e.g., 0.5"
               />
-            </div>
-
-            <div>
-              <label
-                htmlFor="purchasePrice"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Purchase Price (USD)
-              </label>
-              <input
-                type="number"
-                id="purchasePrice"
-                name="purchasePrice"
-                value={formData.purchasePrice}
-                onChange={handleChange}
-                required
-                step="0.000001"
-                min="0"
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="purchaseDate"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Purchase Date
-              </label>
-              <input
-                type="date"
-                id="purchaseDate"
-                name="purchaseDate"
-                value={formData.purchaseDate}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              />
+              {currentPrice && formData.amount && (
+                <div className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+                  Estimated Value: ${(parseFloat(formData.amount) * currentPrice).toLocaleString()}
+                </div>
+              )}
+              {!currentPrice && formData.amount && formData.symbol.length >= 2 && (
+                <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Value will be calculated when price is fetched
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-4">
@@ -145,10 +189,17 @@ export default function AddCoin() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.symbol || !formData.amount}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-500 border border-transparent rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Adding...' : 'Add Coin'}
+                {loading ? (
+                  <div className="flex items-center">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Adding...
+                  </div>
+                ) : (
+                  'Add Coin'
+                )}
               </button>
             </div>
           </form>
