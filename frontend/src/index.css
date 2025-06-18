@@ -4,15 +4,20 @@
 
 @layer base {
   body {
-    @apply bg-gray-50;
+    @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
   }
 }
 
 @layer components {
   .card {
-    @apply p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border;
+    @apply p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border;
     background: #ffffff;
     border-color: #e2e8f0;
+  }
+
+  .dark .card {
+    background: #1f2937;
+    border-color: #374151;
   }
 
   .stat-title {
@@ -20,14 +25,26 @@
     color: #155263;
   }
 
+  .dark .stat-title {
+    color: #60a5fa;
+  }
+
   .stat-value {
     @apply text-2xl font-semibold;
     color: #155263;
   }
 
+  .dark .stat-value {
+    color: #f3f4f6;
+  }
+
   .icon-container {
     @apply p-3 rounded-lg;
     background: rgba(21, 82, 99, 0.1);
+  }
+
+  .dark .icon-container {
+    background: rgba(96, 165, 250, 0.1);
   }
 
   .btn-primary {
@@ -40,6 +57,14 @@
     background: #1a6b7e;
   }
 
+  .dark .btn-primary {
+    background: #3b82f6;
+  }
+
+  .dark .btn-primary:hover {
+    background: #2563eb;
+  }
+
   .btn-secondary {
     @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
     background: #ff6f3c;
@@ -50,6 +75,14 @@
     background: #ff8a5c;
   }
 
+  .dark .btn-secondary {
+    background: #f59e0b;
+  }
+
+  .dark .btn-secondary:hover {
+    background: #d97706;
+  }
+
   .btn-accent {
     @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
     background: #ff9a3c;
@@ -58,5 +91,13 @@
 
   .btn-accent:hover {
     background: #ffb05c;
+  }
+
+  .dark .btn-accent {
+    background: #10b981;
+  }
+
+  .dark .btn-accent:hover {
+    background: #059669;
   }
 }

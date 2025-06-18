@@ -16,6 +16,7 @@ import { ArrowUp, ArrowDown, DollarSign, TrendingUp, Wallet, Activity, PieChart,
 import { binanceService } from '../services/binanceService'
 import toast from 'react-hot-toast'
 import { usePortfolio } from '../context/PortfolioContext'
+import { useTheme } from '../context/ThemeContext'
 
 // Register ChartJS components
 ChartJS.register(
@@ -29,24 +30,6 @@ ChartJS.register(
   ArcElement,
   BarElement
 )
-
-// Color constants
-const COLORS = {
-  primary: '#6366f1', // Indigo
-  success: '#22c55e', // Green
-  danger: '#ef4444',  // Red
-  warning: '#f59e0b', // Amber
-  background: '#f8fafc',
-  card: '#ffffff',
-  text: '#1e293b',
-  border: '#e2e8f0',
-  chart: {
-    main: '#6366f1',
-    upper: 'rgba(99, 102, 241, 0.3)',
-    lower: 'rgba(99, 102, 241, 0.3)',
-    grid: 'rgba(226, 232, 240, 0.5)',
-  }
-}
 
 // Add color mapping for consistent colors across charts
 const COIN_COLORS = {
@@ -63,6 +46,7 @@ const COIN_COLORS = {
 }
 
 export default function Dashboard() {
+  const { darkMode } = useTheme()
   const { holdings, prices, loading } = usePortfolio()
   const [portfolioValue, setPortfolioValue] = useState(0)
   const [portfolioChange, setPortfolioChange] = useState(0)
@@ -75,6 +59,24 @@ export default function Dashboard() {
     totalGain: 0,
     totalLoss: 0
   })
+
+  // Dynamic color scheme based on theme
+  const COLORS = {
+    primary: '#6366f1', // Indigo
+    success: '#22c55e', // Green
+    danger: '#ef4444',  // Red
+    warning: '#f59e0b', // Amber
+    background: darkMode ? '#1f2937' : '#f8fafc',
+    card: darkMode ? '#374151' : '#ffffff',
+    text: darkMode ? '#f3f4f6' : '#1e293b',
+    border: darkMode ? '#4b5563' : '#e2e8f0',
+    chart: {
+      main: '#6366f1',
+      upper: 'rgba(99, 102, 241, 0.3)',
+      lower: 'rgba(99, 102, 241, 0.3)',
+      grid: darkMode ? 'rgba(75, 85, 99, 0.3)' : 'rgba(226, 232, 240, 0.5)',
+    }
+  }
 
   useEffect(() => {
     if (holdings.length > 0) {
