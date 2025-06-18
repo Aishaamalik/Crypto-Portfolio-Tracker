@@ -143,14 +143,28 @@ export function PortfolioProvider({ children }) {
 
   const addHolding = async (coinData) => {
     try {
+      // Get current price data for the coin
+      let currentPrice = coinData.purchasePrice // Use the fetched price
+      let change24h = 0
+      
+      try {
+        const priceData = await binanceService.getCoinPrice(coinData.symbol)
+        currentPrice = priceData.price
+        change24h = priceData.change_24h
+      } catch (error) {
+        console.error(`Error fetching current price for ${coinData.symbol}:`, error)
+        // Use the purchase price as fallback
+      }
+
       const newHolding = {
         id: Date.now(),
         symbol: coinData.symbol,
         amount: coinData.amount,
-        value: coinData.amount * (prices[coinData.symbol] || 0),
-        change24h: 0,
+        value: coinData.amount * currentPrice,
+        change24h: change24h,
         allocation: 0
       }
+      
       setHoldings(prevHoldings => [...prevHoldings, newHolding])
       toast.success('Coin added successfully')
     } catch (error) {

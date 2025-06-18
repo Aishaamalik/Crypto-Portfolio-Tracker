@@ -24,7 +24,7 @@ class CoinManual(BaseModel):
     symbol: str
     amount: float
     purchase_price: float
-    purchase_date: datetime
+    purchase_date: str
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -94,15 +94,20 @@ async def root():
 @app.post("/portfolio/manual")
 async def add_coin_manually(coin: CoinManual):
     try:
+        print(f"Received coin data: {coin.dict()}")  # Debug log
+        
         # Get current price from Binance
         current_price = await BinanceService.get_current_price(coin.symbol)
+        print(f"Current price for {coin.symbol}: {current_price}")  # Debug log
+        
         return {
             "message": "Coin added successfully",
             "coin": coin.dict(),
             "current_price": current_price
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Error in add_coin_manually: {str(e)}")  # Debug log
+        raise HTTPException(status_code=400, detail=f"Failed to add coin: {str(e)}")
 
 @app.get("/portfolio/address/{wallet}")
 async def sync_wallet(wallet: str):
@@ -119,8 +124,14 @@ async def sync_wallet(wallet: str):
 @app.get("/price/{coin_id}")
 async def get_coin_price(coin_id: str):
     try:
+        print(f"Fetching price for coin: {coin_id}")  # Debug log
+        
         price_data = await BinanceService.get_current_price(coin_id)
         change_24h = await BinanceService.get_24h_change(coin_id)
+        
+        print(f"Price data: {price_data}")  # Debug log
+        print(f"24h change: {change_24h}")  # Debug log
+        
         return {
             "symbol": coin_id,
             "price": price_data["price"],
@@ -129,7 +140,8 @@ async def get_coin_price(coin_id: str):
             "last_price": change_24h["lastPrice"]
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Error in get_coin_price for {coin_id}: {str(e)}")  # Debug log
+        raise HTTPException(status_code=400, detail=f"Failed to fetch price for {coin_id}: {str(e)}")
 
 @app.get("/forecast/{coin_id}")
 async def get_coin_forecast(coin_id: str):

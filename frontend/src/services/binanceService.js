@@ -29,10 +29,14 @@ export const binanceService = {
     // Add a coin manually to portfolio
     async addCoinManually(coinData) {
         try {
+            console.log('Calling addCoinManually with data:', coinData); // Debug log
             const response = await axios.post(`${API_URL}/portfolio/manual`, coinData);
+            console.log('addCoinManually response:', response.data); // Debug log
             return response.data;
         } catch (error) {
             console.error('Error adding coin:', error);
+            console.error('Error response data:', error.response?.data); // Debug log
+            console.error('Error response status:', error.response?.status); // Debug log
             throw error;
         }
     },
