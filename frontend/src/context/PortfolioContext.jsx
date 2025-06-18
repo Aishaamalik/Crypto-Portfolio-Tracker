@@ -60,8 +60,45 @@ export function PortfolioProvider({ children }) {
     // Load initial holdings
     const loadHoldings = async () => {
       try {
-        // Convert PORTFOLIO_HOLDINGS to array format
-        const initialHoldings = Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, amount], index) => ({
+        // First try to load saved portfolio from database
+        const response = await fetch('http://localhost:8000/portfolio/1')
+        let savedHoldings = []
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.holdings && data.holdings.length > 0) {
+            savedHoldings = data.holdings.map(holding => ({
+              id: holding.id,
+              symbol: holding.symbol,
+              amount: holding.amount,
+              value: holding.value,
+              change24h: holding.change24h,
+              allocation: 0,
+              purchase_price: holding.purchase_price,
+              purchase_date: holding.purchase_date
+            }))
+            setHoldings(savedHoldings)
+            toast.success('Portfolio loaded from database')
+          }
+        }
+        
+        // If no saved portfolio, use default holdings
+        if (savedHoldings.length === 0) {
+          // Convert PORTFOLIO_HOLDINGS to array format
+          const initialHoldings = Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, amount], index) => ({
+            id: index + 1,
+            symbol,
+            amount,
+            value: 0,
+            change24h: 0,
+            allocation: 0
+          }));
+          
+          setHoldings(initialHoldings);
+        }
+        
+        // Fetch initial prices for all holdings
+        const currentHoldings = savedHoldings.length > 0 ? savedHoldings : Object.entries(PORTFOLIO_HOLDINGS).map(([symbol, amount], index) => ({
           id: index + 1,
           symbol,
           amount,
@@ -69,11 +106,8 @@ export function PortfolioProvider({ children }) {
           change24h: 0,
           allocation: 0
         }));
-        
-        setHoldings(initialHoldings);
-        
-        // Fetch initial prices for all holdings
-        const pricePromises = initialHoldings.map(async (holding) => {
+
+        const pricePromises = currentHoldings.map(async (holding) => {
           try {
             const priceData = await binanceService.getCoinPrice(holding.symbol);
             return {
@@ -173,12 +207,79 @@ export function PortfolioProvider({ children }) {
     }
   }
 
+  const savePortfolio = async () => {
+    try {
+      const portfolioData = {
+        user_id: 1, // Default user ID
+        portfolio_name: "My Portfolio",
+        holdings: holdings.map(holding => ({
+          symbol: holding.symbol,
+          amount: holding.amount,
+          purchase_price: holding.purchase_price || 0,
+          purchase_date: holding.purchase_date || new Date().toISOString().split('T')[0]
+        }))
+      }
+
+      console.log('Sending portfolio data:', portfolioData) // Debug log
+
+      const response = await fetch('http://localhost:8000/portfolio/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(portfolioData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Backend error:', errorData) // Debug log
+        throw new Error(`Failed to save portfolio: ${errorData.detail || 'Unknown error'}`)
+      }
+
+      const result = await response.json()
+      toast.success('Portfolio saved successfully!')
+      return result
+    } catch (error) {
+      console.error('Error saving portfolio:', error)
+      toast.error(error.message || 'Failed to save portfolio')
+      throw error
+    }
+  }
+
+  const loadSavedPortfolio = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/portfolio/1')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.holdings && data.holdings.length > 0) {
+          const formattedHoldings = data.holdings.map(holding => ({
+            id: holding.id,
+            symbol: holding.symbol,
+            amount: holding.amount,
+            value: holding.value,
+            change24h: holding.change24h,
+            allocation: 0,
+            purchase_price: holding.purchase_price,
+            purchase_date: holding.purchase_date
+          }))
+          setHoldings(formattedHoldings)
+          toast.success('Portfolio loaded from database')
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved portfolio:', error)
+      // Don't show error toast as this is expected if no saved portfolio exists
+    }
+  }
+
   const value = {
     holdings,
     prices,
     loading,
     deleteHolding,
-    addHolding
+    addHolding,
+    savePortfolio,
+    loadSavedPortfolio
   }
 
   return (

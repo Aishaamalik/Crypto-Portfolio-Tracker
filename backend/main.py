@@ -1,12 +1,19 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
+from typing import List, Dict, Any
 import json
 import asyncio
 from datetime import datetime
 import uvicorn
 from services.binance_service import BinanceService
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from utils.database import get_db, engine
+from models.models import Base, User, Portfolio, Holding
+from sqlalchemy import text
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Crypto Portfolio Tracker API")
 
@@ -21,6 +28,17 @@ app.add_middleware(
 
 # Models
 class CoinManual(BaseModel):
+    symbol: str
+    amount: float
+    purchase_price: float
+    purchase_date: str
+
+class PortfolioSave(BaseModel):
+    user_id: int = 1  # Default user ID for now
+    portfolio_name: str = "My Portfolio"
+    holdings: List[Dict[str, Any]]
+
+class HoldingData(BaseModel):
     symbol: str
     amount: float
     purchase_price: float
@@ -89,6 +107,15 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/")
 async def root():
     return {"status": "healthy", "message": "Crypto Portfolio Tracker API is running"}
+
+@app.get("/test-db")
+async def test_database(db: Session = Depends(get_db)):
+    try:
+        # Test database connection
+        db.execute(text("SELECT 1"))
+        return {"status": "Database connection successful"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
 
 # Portfolio endpoints
 @app.post("/portfolio/manual")
@@ -163,6 +190,127 @@ async def compare_portfolio(user_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+# Database endpoints for portfolio management
+@app.post("/portfolio/save")
+async def save_portfolio(portfolio_data: PortfolioSave, db: Session = Depends(get_db)):
+    try:
+        print(f"Received portfolio data: {portfolio_data.dict()}")  # Debug log
+        
+        # Check if user exists, create if not
+        user = db.query(User).filter(User.id == portfolio_data.user_id).first()
+        if not user:
+            user = User(id=portfolio_data.user_id, email=f"user{portfolio_data.user_id}@example.com", username=f"user{portfolio_data.user_id}")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        
+        # Check if portfolio exists, create if not
+        portfolio = db.query(Portfolio).filter(
+            Portfolio.user_id == portfolio_data.user_id,
+            Portfolio.name == portfolio_data.portfolio_name
+        ).first()
+        
+        if not portfolio:
+            portfolio = Portfolio(
+                user_id=portfolio_data.user_id,
+                name=portfolio_data.portfolio_name
+            )
+            db.add(portfolio)
+            db.commit()
+            db.refresh(portfolio)
+        
+        # Clear existing holdings for this portfolio
+        db.query(Holding).filter(Holding.portfolio_id == portfolio.id).delete()
+        
+        # Add new holdings
+        for holding_data in portfolio_data.holdings:
+            try:
+                print(f"Processing holding: {holding_data}")  # Debug log
+                
+                # Handle purchase_date more safely
+                purchase_date = datetime.now()
+                if "purchase_date" in holding_data and holding_data["purchase_date"]:
+                    try:
+                        if isinstance(holding_data["purchase_date"], str):
+                            purchase_date = datetime.strptime(holding_data["purchase_date"], "%Y-%m-%d")
+                        else:
+                            purchase_date = datetime.now()
+                    except ValueError:
+                        purchase_date = datetime.now()
+                
+                holding = Holding(
+                    portfolio_id=portfolio.id,
+                    coin_id=holding_data["symbol"],
+                    amount=float(holding_data["amount"]),
+                    purchase_price=float(holding_data.get("purchase_price", 0)),
+                    purchase_date=purchase_date
+                )
+                db.add(holding)
+                print(f"Added holding: {holding.coin_id} - {holding.amount}")  # Debug log
+            except Exception as e:
+                print(f"Error processing holding {holding_data}: {str(e)}")  # Debug log
+                raise e
+        
+        db.commit()
+        print(f"Portfolio saved successfully with {len(portfolio_data.holdings)} holdings")  # Debug log
+        
+        return {
+            "message": "Portfolio saved successfully",
+            "portfolio_id": portfolio.id,
+            "holdings_count": len(portfolio_data.holdings)
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving portfolio: {str(e)}")  # Debug log
+        raise HTTPException(status_code=400, detail=f"Failed to save portfolio: {str(e)}")
+
+@app.get("/portfolio/{user_id}")
+async def get_portfolio(user_id: int, db: Session = Depends(get_db)):
+    try:
+        portfolio = db.query(Portfolio).filter(Portfolio.user_id == user_id).first()
+        if not portfolio:
+            return {"message": "No portfolio found", "holdings": []}
+        
+        holdings = db.query(Holding).filter(Holding.portfolio_id == portfolio.id).all()
+        
+        holdings_data = []
+        for holding in holdings:
+            # Get current price from Binance
+            try:
+                current_price = await BinanceService.get_current_price(holding.coin_id)
+                change_24h = await BinanceService.get_24h_change(holding.coin_id)
+                
+                holdings_data.append({
+                    "id": holding.id,
+                    "symbol": holding.coin_id,
+                    "amount": holding.amount,
+                    "purchase_price": holding.purchase_price,
+                    "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                    "current_price": current_price["price"] if current_price else 0,
+                    "change24h": change_24h["priceChangePercent"] if change_24h else 0,
+                    "value": holding.amount * (current_price["price"] if current_price else 0)
+                })
+            except Exception as e:
+                print(f"Error fetching price for {holding.coin_id}: {str(e)}")
+                holdings_data.append({
+                    "id": holding.id,
+                    "symbol": holding.coin_id,
+                    "amount": holding.amount,
+                    "purchase_price": holding.purchase_price,
+                    "purchase_date": holding.purchase_date.isoformat() if holding.purchase_date else None,
+                    "current_price": 0,
+                    "change24h": 0,
+                    "value": 0
+                })
+        
+        return {
+            "portfolio_id": portfolio.id,
+            "portfolio_name": portfolio.name,
+            "holdings": holdings_data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to get portfolio: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 

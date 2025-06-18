@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUp, ArrowDown, Trash2, Edit2, Plus, Search, Filter } from 'lucide-react'
+import { ArrowUp, ArrowDown, Trash2, Edit2, Plus, Search, Filter, Save, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AddCoinModal from '../components/AddCoinModal'
 import { usePortfolio } from '../context/PortfolioContext'
@@ -19,9 +19,11 @@ const PORTFOLIO_HOLDINGS = {
 }
 
 export default function Portfolio() {
-  const { holdings, loading, deleteHolding, addHolding } = usePortfolio()
+  const { holdings, loading, deleteHolding, addHolding, savePortfolio, loadSavedPortfolio } = usePortfolio()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleDelete = async (id) => {
     await deleteHolding(id)
@@ -35,6 +37,28 @@ export default function Portfolio() {
   const handleAddCoin = async (coinData) => {
     await addHolding(coinData)
     setIsAddModalOpen(false)
+  }
+
+  const handleSavePortfolio = async () => {
+    setIsSaving(true)
+    try {
+      await savePortfolio()
+    } catch (error) {
+      console.error('Error saving portfolio:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleLoadPortfolio = async () => {
+    setIsLoading(true)
+    try {
+      await loadSavedPortfolio()
+    } catch (error) {
+      console.error('Error loading portfolio:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const filteredHoldings = holdings.filter(holding =>
@@ -81,11 +105,27 @@ export default function Portfolio() {
               Filter
             </button>
             <button
+              onClick={handleLoadPortfolio}
+              disabled={isLoading}
+              className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-5 w-5 mr-2" />
+              {isLoading ? 'Loading...' : 'Load Portfolio'}
+            </button>
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex items-center px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
             >
               <Plus className="h-5 w-5 mr-2" />
               Add Coin
+            </button>
+            <button
+              onClick={handleSavePortfolio}
+              disabled={isSaving}
+              className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              {isSaving ? 'Saving...' : 'Save Portfolio'}
             </button>
           </div>
         </div>
